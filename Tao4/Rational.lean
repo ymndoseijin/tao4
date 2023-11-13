@@ -161,15 +161,6 @@ def neg (a : MyRat) : MyRat :=
 
 instance : Neg MyRat := ⟨MyRat.neg⟩
 
-def inv_fn (a: myrat) (a_neq : a.n ≠ 0) : MyRat := (a.d // a.n) a_neq
-
-private theorem inv_respects (a a' : myrat) (ha: a.n ≠ 0) (ha': a'.n ≠ 0) (haa': a ~ a') : inv_fn a ha = inv_fn a' ha' := by {
-  unfold rel_rat at haa'
-  apply rel_int_rat
-  rw [mul_comm, haa'.symm]
-  ring
-}
-
 theorem zero_divided (m : MyInt) (m_neq : m ≠ 0): (0 // m) m_neq = 0 := by {
     rw [zero_eq]
     apply rel_int_rat
@@ -200,59 +191,66 @@ theorem neq_num_neq_zero' {a b: MyInt} (b_neq : b ≠ 0) (a_neq : a ≠ 0) : (a 
   contradiction
 }
 
--- I can prove it just fine using this structure
-structure temp_rat where
-  mk ::
-  r: myrat
-  n_neq: r.n ≠ 0
+def inv_fn (a: myrat) : MyRat := if h: (a.n = 0) then (0 // 1) (MyInt.one_ne_zero) else (a.d // a.n) h
 
-def rel_temp_rat (a: temp_rat) (b: temp_rat) : Prop := a.r ~ b.r
+private theorem inv_respects (a a' : myrat) (haa': a ~ a') : inv_fn a = inv_fn a' := by {
+  unfold rel_rat at haa'
+  unfold inv_fn
 
-private theorem is_equivalence_temp : Equivalence rel_temp_rat where
-  refl := fun x => rel_rat_refl x.r
-  symm := fun a => rel_rat_symm a
-  trans := fun a1 a2 => rel_rat_trans a1 a2
+  have ad_neq := a.d_neq
+  have a'd_neq := a'.d_neq
 
-instance tempSetoid : Setoid (temp_rat) where
-  r     := rel_temp_rat
-  iseqv := is_equivalence_temp
+  split
+  · case inl h => {
+    rw [h, zero_mul] at haa'
+    split
+    · case inl h' => rfl
+    · case inr h' => {
+      have ha' := MyInt.no_zero_divisors a'.n a.d haa'.symm
+      rcases ha' with ⟨h''⟩ | ⟨h''⟩
+      contradiction
+      contradiction
+    }
+  }
+  · case inr h => {
+    split
+    · case inl h' => {
+      rw [h', zero_mul] at haa'
+      have ha' := MyInt.no_zero_divisors a.n a'.d haa'
+      rcases ha' with ⟨h''⟩ | ⟨h''⟩
+      contradiction
+      contradiction
+    }
+    · case inr h' => {
+      apply rel_int_rat
+      rw [mul_comm a'.n] at haa'
+      rw [haa'.symm]
+      ring
+    }
+  }
+}
 
-def TempRat := Quotient tempSetoid
-
-def temp_mk (n d : MyInt) (n_neq : n ≠ 0) (d_neq : d ≠ 0) : TempRat := Quotient.mk' (temp_rat.mk (myrat.mk n d d_neq) n_neq)
-
--- as seen here
-def inv_temp (a : TempRat) : MyRat :=
-  Quot.liftOn a (fun x => inv_fn x.r x.n_neq) (by {
-    intro a a' haa'
-    exact inv_respects a.r a'.r a.n_neq a'.n_neq haa'
-  })
-
--- but I can't find a way to do it with MyRat. we can infer that the numerator is non zero
--- from a ≠ 0 from neq_num_neq_zero, but I'm really not sure on how to apply that here,
--- as I can't pass the inequality to the liftOn function.
--- for now, we can only do sorry, I don't know how to do it as mentioned above
 /-
   after looking around, other people seem to avoid this problem by doing the following:
   · define the inverse function for a zero casem this is what the stdlib and some other people do and makes it more ergonomic as it doesn't need to carry the ≠0 everywhere
   · not using Quot and using a ≃ equivalence everywhere, this is what lean4-axiomatic does and from this it's naturally possible to do everything but that doesn't seem practical and would change pretty much everything (rw, etc)
 
-  I really like the second solution, but for now I think I'll hold off from it and just do the cases
+  I really like the second solution, but for now I think I'll hold off from it and just do the cases version.
 -/
-def inv (a: MyRat) (ha: a ≠ 0) : MyRat :=
-  Quot.liftOn a (fun x => inv_fn x sorry) (by {
-    intro b b' hbb'
-    exact inv_respects b b' sorry sorry hbb'
-  })
+def inv (a: MyRat) : MyRat :=
+  Quot.liftOn a inv_fn inv_respects
 
-infix:160 " ⁻¹ " => inv
+instance : Inv MyRat := ⟨MyRat.inv⟩
 
-theorem inv_int {a b: MyInt} {b_neq : b ≠ 0} {a_neq : a ≠ 0} : ((a // b) b_neq) ⁻¹ (neq_num_neq_zero' b_neq a_neq) = (b // a) a_neq := by {
-  apply rel_int_rat
-  simp only
+theorem inv_int_bare {a b: MyInt} {b_neq : b ≠ 0} : ((a // b) b_neq) ⁻¹ = if h: (a = 0) then (0 // 1) (MyInt.one_ne_zero) else (b // a) h := by rfl
+theorem inv_int {a b: MyInt} {b_neq : b ≠ 0} {a_neq : a ≠ 0} : ((a // b) b_neq) ⁻¹ = (b // a) a_neq := by {
+  rw [inv_int_bare]
+  split
+  contradiction
+  rfl
 }
 
-theorem cancel (a : MyRat) (ha: a ≠ 0): a*(a ⁻¹ ha) = 1 := by {
+theorem cancel (a : MyRat) (ha: a ≠ 0): a*a⁻¹ = 1 := by {
   rcases rat_destruct a with ⟨n, m, m_neq, h1⟩
   have n_neq := neq_num_neq_zero a ha n m m_neq h1
   simp_rw [h1.symm]
@@ -320,10 +318,10 @@ instance : CommRing MyRat where
 
 -- can't actually show it's a field in mathlib, because in mathlib 0⁻¹ = 0
 
-def div (a : MyRat) (b : MyRat) {b_neq : b ≠0 }: MyRat :=
-  a * b ⁻¹ b_neq
+def div (a : MyRat) (b : MyRat): MyRat :=
+  a * b ⁻¹
 
-infixl:70 " / "   => div
+instance : Div MyRat := ⟨MyRat.div⟩
 
 def pos_rat (a : MyRat) := ∃ (x y : MyInt) (y_pos: y ≠ 0), x ≥ 0 ∧ y > 0 ∧ a = (x // y) (y_pos)
 def neg_rat (a : MyRat) := ∃ (b : MyRat), pos_rat b ∧ a = -b
@@ -350,8 +348,6 @@ theorem trichotomy (a : MyRat) : (pos_rat a) ∨ (a = 0) ∨ (neg_rat a)  := by 
     rw [MyInt.one_eq, MyInt.zero_eq] at h
     have a := MyInt.rel_int_nat h
     simp only at a
-    rw [mynat.zero_add, mynat.zero_add, mynat.one_eq_succ_zero] at a
-    exact mynat.succ_ne_zero 0 a.symm
   }
   have m_neg_neq : -m ≠ 0 := by {
     intro h;
