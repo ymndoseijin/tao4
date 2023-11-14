@@ -212,6 +212,11 @@ theorem add_cancel' {a b c : MyInt} : b = c → a+b = a+c := by {
   rw [h]
 }
 
+theorem add_cancel_right' {a b c : MyInt} : b = c → b+a = c+a := by {
+  intro h
+  rw [h]
+}
+
 theorem trichotomy (x: MyInt) : ∃ n > 0, x = 0 ∨ x = of_mynat n ∨ x = -of_mynat n := by {
   rcases int_to_pair x with ⟨a, b, hx⟩
   unfold of_mynat
@@ -512,12 +517,12 @@ theorem mul_cancel_left {a b c : MyInt} (c_pos : c ≠ 0) : c*a = c*b → a = b 
   exact mul_cancel_right c_pos h1
 }
 
-theorem mul_left {a b c : MyInt} : a = b → c*a = c*b := by {
+theorem mul_cancel_left' {a b c : MyInt} : a = b → c*a = c*b := by {
   intro h
   rw [h]
 }
 
-theorem mul_right {a b c : MyInt} : a = b → a*c = b*c := by {
+theorem mul_cancel_right' {a b c : MyInt} : a = b → a*c = b*c := by {
   intro h
   rw [h]
 }
@@ -1083,10 +1088,10 @@ instance : LinearOrderedCommRing MyInt where
     intro x y
     have h1 := order_trichotomy x y
     cases h1 with
-    | inl h1 => apply Or.inl; rcases h1 with ⟨a, h1, h1'⟩; use a
+    | inl h1 => apply Or.inl; rcases h1 with ⟨a, h1, _⟩; use a
     | inr duo => cases duo with
     | inl h1 => apply Or.inl; use 0; unfold of_mynat; rw [← zero_eq, add_zero]; exact h1.symm
-    | inr h1 => apply Or.inr; rcases h1 with ⟨a, h1, h1'⟩; use a
+    | inr h1 => apply Or.inr; rcases h1 with ⟨a, h1, _⟩; use a
   }
   decidableLE := by infer_instance
   mul_comm := mul_comm

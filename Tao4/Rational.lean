@@ -568,3 +568,90 @@ theorem mul_right_le (x y z: MyRat) (h1: x < y) (h2: z > 0): x*z < y*z := by {
   }
   ring
 }
+
+-- next step is absolute value, this will be hard, as you will have to make it decidable
+
+def beq_fn (a b: myrat): Bool := a.n*b.d = b.n*a.d
+
+private theorem beq_respects_1 (a b₁ b₂ : myrat) (hb: b₁ ~ b₂) : beq_fn a b₁ = beq_fn a b₂ := by {
+  unfold rel_rat at hb
+  unfold beq_fn
+  have dec := MyInt.decEq (a.n * b₂.d) (b₂.n * a.d)
+  rcases dec with ⟨h⟩ | ⟨h⟩
+
+  rw [decide_eq_false h]
+  apply decide_eq_false
+  intro h'
+  have h'' := MyInt.mul_cancel_right' (c := b₂.d) h'
+  rw [MyInt.mul_assoc, MyInt.mul_assoc, MyInt.mul_comm a.d, ← MyInt.mul_assoc, ← MyInt.mul_assoc, hb, MyInt.mul_comm a.n, MyInt.mul_comm b₂.n, MyInt.mul_assoc, MyInt.mul_assoc] at h''
+  have h''' := MyInt.mul_cancel_left b₁.d_neq h''
+  contradiction
+
+  rw [decide_eq_true h]
+  apply decide_eq_true
+  have h' := MyInt.mul_cancel_right' (c := b₁.d) h
+  rw [MyInt.mul_assoc, MyInt.mul_assoc, MyInt.mul_comm a.d, ← MyInt.mul_assoc, ← MyInt.mul_assoc, hb.symm, MyInt.mul_comm a.n, MyInt.mul_comm b₁.n, MyInt.mul_assoc, MyInt.mul_assoc] at h'
+  have h'' := MyInt.mul_cancel_left b₂.d_neq h'
+  assumption
+}
+
+private theorem beq_respects_2 (a₁ a₂ b : myrat) (ha: a₁ ~ a₂) : beq_fn a₁ b = beq_fn a₂ b := by {
+  unfold rel_rat at ha
+  unfold beq_fn
+  have dec := MyInt.decEq (a₂.n * b.d) (b.n * a₂.d)
+  rcases dec with ⟨h⟩ | ⟨h⟩
+
+  rw [decide_eq_false h]
+  apply decide_eq_false
+  intro h'
+  have h'' := MyInt.mul_cancel_right' (c := a₂.d) h'
+  rw [MyInt.mul_assoc, MyInt.mul_assoc, MyInt.mul_comm b.d, ← MyInt.mul_assoc, ← MyInt.mul_assoc, ha, MyInt.mul_comm b.n, MyInt.mul_comm a₂.n, MyInt.mul_assoc, MyInt.mul_assoc] at h''
+  have h''' := MyInt.mul_cancel_left a₁.d_neq h''
+  contradiction
+
+  rw [decide_eq_true h]
+  apply decide_eq_true
+  have h' := MyInt.mul_cancel_right' (c := a₁.d) h
+  rw [MyInt.mul_assoc, MyInt.mul_assoc, MyInt.mul_comm b.d, ← MyInt.mul_assoc, ← MyInt.mul_assoc, ha.symm, MyInt.mul_comm b.n, MyInt.mul_comm a₁.n, MyInt.mul_assoc, MyInt.mul_assoc] at h'
+  have h'' := MyInt.mul_cancel_left a₂.d_neq h'
+  assumption
+}
+
+def beq (a b: MyRat) := Quot.liftOn₂ a b beq_fn (beq_respects_1) (beq_respects_2)
+
+instance : BEq MyRat where
+  beq := MyRat.beq
+
+-- n.l+m.r = m.l+n.r
+theorem beq_nat {a b c d: MyInt} {b_neq : b ≠ 0} {d_neq : d ≠ 0} : beq ((a // b) b_neq) ((c // d) d_neq) = Decidable.decide (a*d = c*b) := by rfl
+
+theorem eq_of_beq_eq_true {n m : MyRat} : Eq (beq n m) true → Eq n m := by {
+  intro h
+  -- rcases rat_destruct a with ⟨n, m, m_neq, h1⟩
+  rcases rat_destruct n with ⟨a, b, b_neq, hn⟩
+  rcases rat_destruct m with ⟨c, d, d_neq, hm⟩
+  rw [hn.symm, hm.symm]
+  rw [hn.symm, hm.symm, beq_nat] at h
+  have h' := of_decide_eq_true h
+  apply rel_int_rat
+  exact h'
+}
+
+theorem ne_of_beq_eq_false {n m : MyRat} : Eq (beq n m) false → Not (Eq n m) := by {
+  intro h
+  rcases rat_destruct n with ⟨a, b, b_neq, hn⟩
+  rcases rat_destruct m with ⟨c, d, d_neq, hm⟩
+  rw [hn.symm, hm.symm]
+  rw [hn.symm, hm.symm, beq_nat] at h
+  have h' := of_decide_eq_false h
+  intro h2
+  have h2' := rel_rat_int h2
+  contradiction
+}
+
+def decEq (n m : MyRat) : Decidable (Eq n m) :=
+  match h:beq n m with
+  | true  => isTrue (eq_of_beq_eq_true h)
+  | false  => isFalse (ne_of_beq_eq_false h)
+
+@[inline] instance : DecidableEq MyRat := MyRat.decEq

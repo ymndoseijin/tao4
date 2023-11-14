@@ -415,7 +415,6 @@ theorem mul_zero (n : mynat) : n*0 = 0 := by {
   }
 }
 
-@[simp]
 theorem mul_succ (n m : mynat) : m * n + m = m * succ n := by {
   induction m with
   | zero => rw [zero_eq_zero, zero_mul, zero_mul, add_zero]
@@ -537,13 +536,22 @@ theorem mul_cancel_right {a b c : mynat} (c_pos : c > 0) (h1 : c*a = c*b) : a = 
   exact mul_cancel c_pos h1
 }
 
+theorem mul_cancel' {a b c : mynat} : b = c → a*b = a*c := by {
+  intro h
+  rw [h]
+}
+
+theorem mul_cancel_right' {a b c : mynat} : b = c → b*a = c*a := by {
+  intro h
+  rw [h]
+}
+
 -- now, consider mynat to be a semiring in mathlib
 @[simp]
 theorem mul_one (a : mynat) : a*1 = a := by {
   rw [mul_comm, one_eq_succ_zero, succ_mul, zero_mul, zero_add]
 }
 
-@[simp]
 theorem right_distrib (a b c : mynat) : (a + b) * c = a * c + b * c := by {
   rw [mul_comm, mul_comm a c, mul_comm b c]; exact left_distrib c a b
 }
