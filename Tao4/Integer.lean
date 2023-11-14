@@ -805,59 +805,12 @@ theorem one_ne_zero : (1 : MyInt) ≠ 0 := by {
 }
 
 /-
-instance : LinearOrderedCommRing MyInt where
-  le_trans := le_trans
-  le_refl := le_refl
-  le_antisymm := le_antisymm
-  add_le_add_left := add_le_add_left
-  exists_pair_ne := by {
-    use 0, 1
-    exact zero_ne_one
-  }
-  zero_le_one := by {
-    use 1
-    unfold of_mynat
-    ring
-    rw [one_eq]
-  }
-  mul_pos := by {
-    intro x y h1 h2
-    rcases h1 with ⟨a, h1, h1'⟩
-    rcases h2 with ⟨b, h2, h2'⟩
-    rw [zero_add] at *
-    unfold of_mynat at *
-    rw [h1, h2, mul_nat, zero_eq]
-    ring
-    use a*b
-    constructor
-    unfold of_mynat
-    rw [add_nat]
-    apply rel_nat_int
-    ring
-    intro h3
-    have h4 := rel_int_nat h3
-    rw [mynat.add_zero, mynat.add_zero] at h4
-    have h5 := mynat.no_zero_divisors a b h4.symm
-    rw [zero_eq] at *
-    cases h5 with
-    | inl h5 => rw [h5] at h1; rw [h1] at h1'; contradiction
-    | inr h5 => rw [h5] at h2; rw [h2] at h2'; contradiction
-  }
-  le_total := by {
-    intro x y
-    have h1 := order_trichotomy x y
-    cases h1 with
-    | inl h1 => apply Or.inl; rcases h1 with ⟨a, h1, h1'⟩; use a
-    | inr duo => cases duo with
-    | inl h1 => apply Or.inl; use 0; unfold of_mynat; rw [← zero_eq, add_zero]; exact h1.symm
-    | inr h1 => apply Or.inr; rcases h1 with ⟨a, h1, h1'⟩; use a
-  }
-  decidableLE := by {
-    intro a b
-    -- lol what
-    sorry
-  }
-  mul_comm := mul_comm
+type mismatch
+  HEq.rfl
+has type
+  HEq ?m.109596 ?m.109596 : Prop
+but is expected to have type
+  a✝ < b✝ ↔ a✝ ≤ b✝ ∧ ¬b✝ ≤ a✝ : Prop
 -/
 
 theorem sub_eq_sub (a b: mynat) : (a—b) = of_mynat a - of_mynat b := by unfold of_mynat; rw [sub_nat, add_nat]; apply rel_nat_int; ring
@@ -947,5 +900,163 @@ def decEq (n m : MyInt) : Decidable (Eq n m) :=
   | false  => isFalse (ne_of_beq_eq_false h)
 
 @[inline] instance : DecidableEq MyInt := MyInt.decEq
+
+/-
+  I had to manually sift through the code, the error is with lt_iff_le_not_le
+-/
+instance : LinearOrderedCommRing MyInt where
+  le_trans := le_trans
+  le_refl := le_refl
+  le_antisymm := le_antisymm
+  add_le_add_left := add_le_add_left
+  exists_pair_ne := by {
+    use 0, 1
+    exact zero_ne_one
+  }
+  zero_le_one := by {
+    use 1
+    ring
+  }
+  mul_pos := by {
+    intro x y h1 h2
+    rcases h1 with ⟨a, h1, h1'⟩
+    rcases h2 with ⟨b, h2, h2'⟩
+    rw [zero_add] at *
+    unfold of_mynat at *
+    rw [h1, h2, mul_nat]
+    ring
+    use a*b
+    constructor
+    unfold of_mynat
+    apply rel_nat_int
+    ring
+    intro h3
+    have h4 := rel_int_nat h3
+    rw [mynat.add_zero, mynat.add_zero] at h4
+    have h5 := mynat.no_zero_divisors a b h4.symm
+    rw [zero_eq] at *
+    cases h5 with
+    | inl h5 => rw [h5] at h1; rw [h1] at h1'; contradiction
+    | inr h5 => rw [h5] at h2; rw [h2] at h2'; contradiction
+  }
+  le_total := by {
+    intro x y
+    have h1 := order_trichotomy x y
+    cases h1 with
+    | inl h1 => apply Or.inl; rcases h1 with ⟨a, h1, h1'⟩; use a
+    | inr duo => cases duo with
+    | inl h1 => apply Or.inl; use 0; unfold of_mynat; rw [← zero_eq, add_zero]; exact h1.symm
+    | inr h1 => apply Or.inr; rcases h1 with ⟨a, h1, h1'⟩; use a
+  }
+  decidableLE := by {
+    intro a b
+    simp
+    sorry
+  }
+  mul_comm := mul_comm
+  lt_iff_le_not_le := by {
+    intro a b
+    constructor
+    intro h
+    rcases h with ⟨c, h, h'⟩
+    constructor
+    use c
+    intro h2
+    rw [h] at h'
+    rcases h2 with ⟨d, h2, h2'⟩
+    rw [← add_zero b, add_assoc, add_assoc] at h
+    have h1' := add_cancel h
+    unfold of_mynat at h1'
+    rw [zero_add, zero_eq, add_nat] at h1'
+    have h1'' := rel_int_nat h1'
+    rw [mynat.zero_add, mynat.zero_add, mynat.add_zero] at h1''
+    rcases mynat.zero_iff_eq_zero _ _ h1''.symm with ⟨h2, h2'⟩
+    unfold of_mynat at h'
+    rw [h2, h2', zero_eq.symm, add_zero, add_zero] at h'
+    contradiction
+
+    intro h
+    rcases h with ⟨h1, h2⟩
+    rcases h1 with ⟨c, h⟩
+    use c
+    constructor
+    exact h
+    intro h1
+    rw [h1] at h2
+    have obvious : b ≤ b := by {
+      use 0
+      unfold of_mynat
+      rw [zero_eq.symm, add_zero]
+    }
+    contradiction
+  }
+
+/-
+xy: MyInt
+h1: 0 < x
+h2: 0 < y
+⊢ 0 < x * y
+-/
+theorem mul_pos (x y: MyInt) (h1: 0 < x) (h2: 0 < y) : 0 < x * y := by {
+    rcases h1 with ⟨a, h1, h1'⟩
+    rcases h2 with ⟨b, h2, h2'⟩
+    rw [zero_add] at *
+    unfold of_mynat at *
+    rw [h1, h2, mul_nat]
+    ring
+    use a*b
+    constructor
+    unfold of_mynat
+    apply rel_nat_int
+    ring
+    intro h3
+    have h4 := rel_int_nat h3
+    rw [mynat.add_zero, mynat.add_zero] at h4
+    have h5 := mynat.no_zero_divisors a b h4.symm
+    rw [zero_eq] at *
+    cases h5 with
+    | inl h5 => rw [h5] at h1; rw [h1] at h1'; contradiction
+    | inr h5 => rw [h5] at h2; rw [h2] at h2'; contradiction
+}
+
+-- why can't linarith infer this??
+theorem ge_pos {a b: MyInt} (h1: a ≥ 0) (h2: b ≥ 0) : a*b ≥ 0 := by {
+  rcases h1 with ⟨c, h1, h1'⟩
+  rcases h2 with ⟨d, h2, h2'⟩
+  unfold of_mynat
+  ring
+  rw [mul_nat]
+  use c*d
+  unfold of_mynat
+  ring
+}
+
+theorem gt_pos {a b: MyInt} (h1: a > 0) (h2: b > 0) : a*b > 0 := by {
+  rcases h1 with ⟨c, h1, h1'⟩
+  rcases h2 with ⟨d, h2, h2'⟩
+  rw [h1, h2]
+  unfold of_mynat
+  ring
+  rw [mul_nat]
+  use c*d
+  unfold of_mynat
+  constructor
+  ring
+  ring
+  intro h3
+  rw [zero_eq] at  h3
+  have h4 := rel_int_nat h3
+  rw [mynat.zero_add, mynat.add_zero] at h4
+  rcases mynat.no_zero_divisors _ _ h4.symm with ⟨hc⟩ | ⟨hd⟩
+  rw [hc, zero_add] at h1
+  unfold of_mynat at h1
+  rw [zero_eq.symm] at h1
+  exact h1'.symm h1
+
+  rw [hd, zero_add] at h2
+  unfold of_mynat at h2
+  rw [zero_eq.symm] at h2
+  exact h2'.symm h2
+}
 
 end MyInt
