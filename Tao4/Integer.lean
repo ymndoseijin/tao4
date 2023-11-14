@@ -55,13 +55,13 @@ def mk (a b : mynat) : MyInt := Quotient.mk' (myint.mk a b)
 infixl:65 " — "   => mk
 infixl:65 " ~ "   => rel_int
 
-theorem rel_nat_int (a b c d: mynat) : a + d = c + b → (a—b) = (c—d) := by {
+theorem rel' (a b c d: mynat) : a + d = c + b → (a—b) = (c—d) := by {
   intro h
   apply Quot.sound (r := rel_int); unfold rel_int
   exact h
 }
 
-theorem rel_int_nat {a b c d: mynat} : (a—b) = (c—d) → a + d = c + b := by {
+theorem rel {a b c d: mynat} : (a—b) = (c—d) → a + d = c + b := by {
   intro h
   have h1 := Quotient.exact h
   exact h1
@@ -75,7 +75,7 @@ private theorem add_respects_nat (a b a' b' c d c' d' : mynat) :
   intro hab
   intro hcd
   unfold add_fn
-  apply rel_nat_int
+  apply rel'
   ring
   rw [add_comm (a+c) b', ←add_assoc, add_comm b' a, hab]
   rw [add_comm a' c', add_comm (c'+a'+b), ←add_assoc, ←add_assoc, add_comm d c', ←hcd]
@@ -104,7 +104,7 @@ private theorem mul_respects_nat_1 (a b a' b' c d : mynat) :
 (myint.mk a b) ~ (myint.mk a' b') → mul_fn (myint.mk c d) (myint.mk a b) = mul_fn (myint.mk c d) (myint.mk a' b') := by {
   intro hab
   unfold mul_fn
-  apply rel_nat_int
+  apply rel'
   ring
   rw [←left_distrib, ←left_distrib, add_assoc, ←left_distrib, add_assoc, mul_comm d b', ←right_distrib, add_comm b a', hab]
   rw [mul_comm d, mul_comm c]
@@ -114,7 +114,7 @@ private theorem mul_respects_nat_2 (a b a' b' c d : mynat) :
 (myint.mk a b) ~ (myint.mk a' b') → mul_fn (myint.mk a b) (myint.mk c d) = mul_fn (myint.mk a' b') (myint.mk c d) := by {
   intro hab
   unfold mul_fn
-  apply rel_nat_int
+  apply rel'
   ring
   rw [mul_comm c b', ←right_distrib, mul_comm b d, add_comm, ←add_assoc, add_comm, ←add_assoc, ←left_distrib, add_comm b a', hab]
   rw [←add_comm (d*b'), ←add_assoc, ←add_assoc, mul_comm d b', ←right_distrib, add_assoc, ←left_distrib, add_comm b' a, add_comm b a', hab]
@@ -155,7 +155,7 @@ def neg_fn (a: myint) : MyInt := (a.r—a.l)
 -- (a b : α) → r a b → f a = f b
 private theorem neg_respects_nat (a b a' b': mynat) : myint.mk a b ~ myint.mk a' b' → neg_fn (myint.mk a b) = neg_fn (myint.mk a' b') := by {
   intro hr
-  apply rel_nat_int
+  apply rel'
   rw [add_comm, add_comm b' a]
   exact hr.symm
 }
@@ -196,9 +196,9 @@ theorem add_cancel {a b c : MyInt} (h1 : a+b = a+c) : b = c := by {
   rw [ha.symm, hb.symm, hc.symm] at h1
 
   rw [add_nat, add_nat] at h1
-  apply rel_nat_int
+  apply rel'
 
-  have h2 := rel_int_nat h1
+  have h2 := rel h1
   rw [add_assoc, add_assoc] at h2
   have h3 := mynat.add_cancel (a := l) h2
   rw [←add_assoc, add_comm, ←add_assoc, add_comm, ←add_assoc, add_comm l'', add_assoc, add_assoc] at h3
@@ -237,7 +237,7 @@ theorem trichotomy (x: MyInt) : ∃ n > 0, x = 0 ∨ x = of_mynat n ∨ x = -of_
     rw [neg_nat]
     have hr : 0 — c = x :=
       calc
-        0 — c = a — (a+c) := by apply rel_nat_int; ring
+        0 — c = a — (a+c) := by apply rel'; ring
         _ = a — b := by rw [hc1]
         _ = x := by rw [hx]
 
@@ -256,7 +256,7 @@ theorem trichotomy (x: MyInt) : ∃ n > 0, x = 0 ∨ x = of_mynat n ∨ x = -of_
       apply Or.inl
       rw [h1] at hx
       rw [hx.symm]
-      apply rel_nat_int
+      apply rel'
       ring
     }
     | inr h1 => {
@@ -272,7 +272,7 @@ theorem trichotomy (x: MyInt) : ∃ n > 0, x = 0 ∨ x = of_mynat n ∨ x = -of_
       apply Or.inr
       apply Or.inl
       rw [hx.symm]
-      apply rel_nat_int
+      apply rel'
       rw [add_zero, add_comm c b]
       exact hc1
     }
@@ -288,7 +288,7 @@ macro "myint_xyz" : tactic =>
              rcases int_to_pair y with ⟨c, d, hy⟩
              rcases int_to_pair z with ⟨e, f, hz⟩
              rw [hx.symm, hy.symm, hz.symm]
-             apply rel_nat_int
+             apply rel'
              ring))
 
 macro "myint_xy" : tactic =>
@@ -296,14 +296,14 @@ macro "myint_xy" : tactic =>
              rcases int_to_pair x with ⟨a, b, hx⟩
              rcases int_to_pair y with ⟨c, d, hy⟩
              rw [hx.symm, hy.symm]
-             apply rel_nat_int
+             apply rel'
              ring))
 
 macro "myint_x" : tactic =>
   `(tactic| (intro x
              rcases int_to_pair x with ⟨a, b, hx⟩
              rw [hx.symm]
-             apply rel_nat_int
+             apply rel'
              ring))
 
 theorem add_comm : ∀ (x y : MyInt), x+y = y+x := by myint_xy
@@ -356,10 +356,10 @@ theorem no_zero_divisors (a b : MyInt) (h1: a*b = 0) : a = 0 ∨ b = 0 := by {
       unfold of_mynat at h2
       rw [h2, mul_nat] at h1
       rw [h2]
-      have h3 := rel_int_nat h1
+      have h3 := rel h1
 
       apply Or.inr
-      apply rel_nat_int
+      apply rel'
       ring
       rw [mynat.zero_mul, mynat.zero_mul, mynat.zero_add, mynat.add_zero, mynat.add_zero, mynat.add_zero] at h3
       exact mynat.mul_cancel_right hn h3
@@ -370,10 +370,10 @@ theorem no_zero_divisors (a b : MyInt) (h1: a*b = 0) : a = 0 ∨ b = 0 := by {
       rw [h2, mul_nat] at h1
       rw [h2]
       rw [mynat.zero_mul, mynat.zero_add, mynat.zero_mul, mynat.zero_add] at h1
-      have h3 := rel_int_nat h1
+      have h3 := rel h1
 
       apply Or.inr
-      apply rel_nat_int
+      apply rel'
       ring
       rw [mynat.add_comm] at h3
       have h4 := mynat.mul_cancel_right hn (mynat.add_cancel h3)
@@ -477,17 +477,17 @@ theorem mul_cancel_right {a b c : MyInt} (c_pos : c ≠ 0) : a*c = b*c → a = b
       unfold of_mynat at hc1
       rw [hc2.symm] at hc1
       rw [hc2.symm] at h1
-      have hc3 := rel_int_nat hc1
+      have hc3 := rel hc1
       rw [mynat.add_zero] at hc3
       rw [hc1] at h1
       rcases int_to_pair a with ⟨f, g, ha⟩
       rcases int_to_pair b with ⟨h, i, hb⟩
       rw [ha.symm, hb.symm, mul_nat] at h1
-      have h2 := rel_int_nat h1
+      have h2 := rel h1
       simp only [mynat.mul_zero, mynat.add_zero, mynat.zero_add, ←mynat.right_distrib] at h2
       have h3 := mynat.mul_cancel hn h2
       rw [ha.symm, hb.symm]
-      apply rel_nat_int
+      apply rel'
       exact h3
     }
     | inr hc1 => {
@@ -495,17 +495,17 @@ theorem mul_cancel_right {a b c : MyInt} (c_pos : c ≠ 0) : a*c = b*c → a = b
       unfold of_mynat at hc1
       rw [hc2.symm, neg_nat] at hc1
       rw [hc2.symm] at h1
-      have hc3 := rel_int_nat hc1
+      have hc3 := rel hc1
       rw [mynat.zero_add] at hc3
       rw [hc1] at h1
       rcases int_to_pair a with ⟨f, g, ha⟩
       rcases int_to_pair b with ⟨h, i, hb⟩
       rw [ha.symm, hb.symm, mul_nat] at h1
-      have h2 := rel_int_nat h1
+      have h2 := rel h1
       simp only [mynat.mul_zero, mynat.add_zero, mynat.zero_add, ←mynat.right_distrib] at h2
       have h3 := mynat.mul_cancel hn h2
       rw [ha.symm, hb.symm]
-      apply rel_nat_int
+      apply rel'
       rw [mynat.add_comm h g, mynat.add_comm f i]
       exact h3.symm
     }
@@ -565,7 +565,7 @@ theorem le_neg (a b : MyInt) (h1: a > b) : -a < -b := by {
     have one_eq : 1 = 1 — 0 := by rfl
     have zero_eq : 0 = 0 — 0 := by rfl
     rw [one_eq, zero_eq, neg_nat] at h4
-    have h5 := rel_int_nat h4
+    have h5 := rel h4
     rw [mynat.zero_add, mynat.zero_add, mynat.one_eq_succ_zero] at h5
     have h6 := mynat.succ_ne_zero 0
     exact h6 h5.symm
@@ -585,7 +585,7 @@ theorem trichotomy_rel (a : MyInt) : a > 0 ∨ a = 0 ∨ a < 0 := by {
   rw [zero_add]; exact ha
   intro ha'
   rw [ha'.symm] at ha
-  have ha'' := rel_int_nat ha
+  have ha'' := rel ha
   rw [mynat.zero_add, mynat.add_zero] at ha''
   rcases hna with ⟨_, _, haa⟩
   contradiction
@@ -596,7 +596,7 @@ theorem trichotomy_rel (a : MyInt) : a > 0 ∨ a = 0 ∨ a < 0 := by {
   ring
   intro ha'
   rw [ha'] at ha
-  have ha'' := rel_int_nat ha
+  have ha'' := rel ha
   simp only at ha''
   rw [mynat.zero_add, mynat.add_zero] at ha''
   rcases hna with ⟨_, _, haa⟩
@@ -627,7 +627,7 @@ theorem order_trichotomy (a b : MyInt) : a < b ∨ a = b ∨ a > b := by {
   use nb
   constructor; rw [zero_add]; rfl
   intro h1
-  have h2 := rel_int_nat h1
+  have h2 := rel h1
   rw [mynat.add_zero, mynat.add_zero] at h2
   rw [h2.symm] at hnb
   rcases hnb with ⟨_, _, _ ⟩
@@ -636,9 +636,9 @@ theorem order_trichotomy (a b : MyInt) : a < b ∨ a = b ∨ a > b := by {
   apply Or.inr; apply Or.inr
   rw [ha, hb]
   use nb
-  constructor; unfold of_mynat; rw [add_nat]; apply rel_nat_int; ring
+  constructor; unfold of_mynat; rw [add_nat]; apply rel'; ring
   intro h1
-  have h2 := rel_int_nat h1
+  have h2 := rel h1
   rw [mynat.zero_add, mynat.zero_add] at h2
   rw [h2.symm] at hnb
   rcases hnb with ⟨_, _, _ ⟩
@@ -650,9 +650,9 @@ theorem order_trichotomy (a b : MyInt) : a < b ∨ a = b ∨ a > b := by {
   apply Or.inr; apply Or.inr
   rw [ha, hb]
   use na
-  constructor; unfold of_mynat; rw [zero_eq, add_nat]; apply rel_nat_int; ring
+  constructor; unfold of_mynat; rw [zero_eq, add_nat]; apply rel'; ring
   intro h1
-  have h2 := rel_int_nat h1
+  have h2 := rel h1
   rw [mynat.zero_add, mynat.add_zero] at h2
   rw [h2.symm] at hna
   rcases hna with ⟨_, _, _ ⟩
@@ -663,27 +663,27 @@ theorem order_trichotomy (a b : MyInt) : a < b ∨ a = b ∨ a > b := by {
   have tri := mynat.trichotomy na nb
   rcases tri with ⟨c, hc, hab⟩ | ⟨⟨hab⟩ | ⟨c, hc, hab⟩⟩
   -- lt
-  apply Or.inl; rw [hc]; use c; constructor; apply rel_nat_int; ring
-  intro h1; have h2 := rel_int_nat h1; rw [mynat.add_zero, mynat.add_zero, ← hc] at h2; contradiction
+  apply Or.inl; rw [hc]; use c; constructor; apply rel'; ring
+  intro h1; have h2 := rel h1; rw [mynat.add_zero, mynat.add_zero, ← hc] at h2; contradiction
   -- eq
-  apply Or.inr; apply Or.inl; apply rel_nat_int; ring; exact hab;
+  apply Or.inr; apply Or.inl; apply rel'; ring; exact hab;
   -- gt
-  apply Or.inr; apply Or.inr; use c; constructor; unfold of_mynat; rw [add_nat]; apply rel_nat_int; ring; exact hc;
-  intro h1; have h2 := rel_int_nat h1; rw [mynat.add_zero, mynat.add_zero] at h2; contradiction;
+  apply Or.inr; apply Or.inr; use c; constructor; unfold of_mynat; rw [add_nat]; apply rel'; ring; exact hc;
+  intro h1; have h2 := rel h1; rw [mynat.add_zero, mynat.add_zero] at h2; contradiction;
   -- b < 0
   rw [ha, hb]
   have tri := mynat.trichotomy nb na
   rcases tri with ⟨c, hc, _⟩ | ⟨⟨hab⟩ | ⟨c, hc, _⟩⟩
-  apply Or.inr; apply Or.inr; rw [hc]; use nb * 2 + c; constructor; apply rel_nat_int; ring
-  intro h1; have h2 := rel_int_nat h1; rw [mynat.add_zero, mynat.add_comm, ← hc] at h2;
+  apply Or.inr; apply Or.inr; rw [hc]; use nb * 2 + c; constructor; apply rel'; ring
+  intro h1; have h2 := rel h1; rw [mynat.add_zero, mynat.add_comm, ← hc] at h2;
   have h3 := (mynat.zero_iff_eq_zero _ _ h2.symm).left.symm; rcases hnb with ⟨_, _, _ ⟩; contradiction
   -- eq
-  apply Or.inr; apply Or.inr; rw [hab]; use na * 2; constructor; apply rel_nat_int; ring
-  intro h1; have h2 := rel_int_nat h1; rw [mynat.add_zero] at h2;
+  apply Or.inr; apply Or.inr; rw [hab]; use na * 2; constructor; apply rel'; ring
+  intro h1; have h2 := rel h1; rw [mynat.add_zero] at h2;
   have h3 := (mynat.zero_iff_eq_zero _ _ h2.symm).left.symm; rcases hna with ⟨_, _, _ ⟩; contradiction
   -- gt
-  apply Or.inr; apply Or.inr; rw [hc]; use na * 2 + c; constructor; apply rel_nat_int; ring
-  intro h1; have h2 := rel_int_nat h1; rw [mynat.add_zero] at h2;
+  apply Or.inr; apply Or.inr; rw [hc]; use na * 2 + c; constructor; apply rel'; ring
+  intro h1; have h2 := rel h1; rw [mynat.add_zero] at h2;
   have h3 := (mynat.zero_iff_eq_zero _ _ h2.symm).left.symm; rcases hna with ⟨_, _, _ ⟩; contradiction
 
   -- a < 0
@@ -692,9 +692,9 @@ theorem order_trichotomy (a b : MyInt) : a < b ∨ a = b ∨ a > b := by {
   apply Or.inl
   rw [ha, hb]
   use na
-  constructor; unfold of_mynat; rw [zero_eq, add_nat]; apply rel_nat_int; ring
+  constructor; unfold of_mynat; rw [zero_eq, add_nat]; apply rel'; ring
   intro h1
-  have h2 := rel_int_nat h1
+  have h2 := rel h1
   rw [mynat.zero_add, mynat.zero_add] at h2
   rcases hna with ⟨_, _, _ ⟩; contradiction
   -- b > 0
@@ -702,16 +702,16 @@ theorem order_trichotomy (a b : MyInt) : a < b ∨ a = b ∨ a > b := by {
   have tri := mynat.trichotomy nb na
   rcases tri with ⟨c, hc, _⟩ | ⟨⟨hab⟩ | ⟨c, hc, _⟩⟩
   -- lt
-  apply Or.inl; rw [hc]; use nb * 2 + c; constructor; apply rel_nat_int; ring
-  intro h1; have h2 := rel_int_nat h1; rw [mynat.add_zero, mynat.add_comm, ← hc] at h2;
+  apply Or.inl; rw [hc]; use nb * 2 + c; constructor; apply rel'; ring
+  intro h1; have h2 := rel h1; rw [mynat.add_zero, mynat.add_comm, ← hc] at h2;
   have h3 := (mynat.zero_iff_eq_zero _ _ h2.symm).left.symm; rcases hna with ⟨_, _, _ ⟩; contradiction
   -- eq
-  apply Or.inl; rw [hab]; use na * 2; constructor; apply rel_nat_int; ring
-  intro h1; have h2 := rel_int_nat h1; rw [mynat.add_zero] at h2;
+  apply Or.inl; rw [hab]; use na * 2; constructor; apply rel'; ring
+  intro h1; have h2 := rel h1; rw [mynat.add_zero] at h2;
   have h3 := (mynat.zero_iff_eq_zero _ _ h2.symm).left.symm; rcases hna with ⟨_, _, _ ⟩; contradiction
   -- gt
-  apply Or.inl; rw [hc]; use na * 2 + c; constructor; apply rel_nat_int; ring
-  intro h1; have h2 := rel_int_nat h1; rw [mynat.add_zero] at h2;
+  apply Or.inl; rw [hc]; use na * 2 + c; constructor; apply rel'; ring
+  intro h1; have h2 := rel h1; rw [mynat.add_zero] at h2;
   have h3 := (mynat.zero_iff_eq_zero _ _ h2.symm).right.symm; rcases hna with ⟨_, _, _ ⟩; contradiction
 
   -- b < 0
@@ -719,13 +719,13 @@ theorem order_trichotomy (a b : MyInt) : a < b ∨ a = b ∨ a > b := by {
   have tri := mynat.trichotomy na nb
   rcases tri with ⟨c, hc, hab⟩ | ⟨⟨hab⟩ | ⟨c, hc, hab⟩⟩
   -- lt
-  apply Or.inr; apply Or.inr; rw [hc]; use c; constructor; apply rel_nat_int; ring
-  intro h1; have h2 := rel_int_nat h1; rw [mynat.zero_add, mynat.zero_add, ← hc] at h2; contradiction
+  apply Or.inr; apply Or.inr; rw [hc]; use c; constructor; apply rel'; ring
+  intro h1; have h2 := rel h1; rw [mynat.zero_add, mynat.zero_add, ← hc] at h2; contradiction
   -- eq
-  apply Or.inr; apply Or.inl; apply rel_nat_int; ring; exact hab.symm;
+  apply Or.inr; apply Or.inl; apply rel'; ring; exact hab.symm;
   -- gt
-  apply Or.inl; use c; constructor; unfold of_mynat; rw [add_nat]; apply rel_nat_int; ring; rw [mynat.add_comm]; exact hc;
-  intro h1; have h2 := rel_int_nat h1; rw [mynat.zero_add, mynat.zero_add] at h2; contradiction;
+  apply Or.inl; use c; constructor; unfold of_mynat; rw [add_nat]; apply rel'; ring; rw [mynat.add_comm]; exact hc;
+  intro h1; have h2 := rel h1; rw [mynat.zero_add, mynat.zero_add] at h2; contradiction;
 }
 
 -- extra stuff to prove it's a linear order for mathlib
@@ -750,9 +750,9 @@ theorem le_antisymm : ∀ (x y : MyInt), x ≤ y → y ≤ x → x = y := by {
   rw [hy.symm, hx.symm]
   rw [hy.symm, hx.symm, add_nat] at hxy
   rw [hy.symm, hx.symm, add_nat] at hyx
-  apply rel_nat_int
-  have h1 := rel_int_nat hxy
-  have h2 := rel_int_nat hyx
+  apply rel'
+  have h1 := rel hxy
+  have h2 := rel hyx
 
   rw [mynat.add_zero] at *
   rw [h2, ← mynat.add_assoc y₁]
@@ -795,13 +795,13 @@ theorem add_le_add_left (a b : MyInt) (h : a ≤ b) (c : MyInt) : c + a ≤ c + 
   use d
   unfold of_mynat
   rw [neg_nat, add_nat]
-  apply rel_nat_int
+  apply rel'
   ring
 }
 
 theorem zero_ne_one : (0 : MyInt) ≠ 1 := by {
     intro h1
-    have h2 := rel_int_nat h1
+    have h2 := rel h1
     simp only at h2
 }
 
@@ -818,7 +818,7 @@ but is expected to have type
   a✝ < b✝ ↔ a✝ ≤ b✝ ∧ ¬b✝ ≤ a✝ : Prop
 -/
 
-theorem sub_eq_sub (a b: mynat) : (a—b) = of_mynat a - of_mynat b := by unfold of_mynat; rw [sub_nat, add_nat]; apply rel_nat_int; ring
+theorem sub_eq_sub (a b: mynat) : (a—b) = of_mynat a - of_mynat b := by unfold of_mynat; rw [sub_nat, add_nat]; apply rel'; ring
 
 def beq_fn (n m: myint): Bool := n.l+m.r = m.l+n.r
 
@@ -883,7 +883,7 @@ theorem eq_of_beq_eq_true {n m : MyInt} : Eq (beq n m) true → Eq n m := by {
   rw [hn.symm, hm.symm]
   rw [hn.symm, hm.symm, beq_nat] at h
   have h' := of_decide_eq_true h
-  apply rel_nat_int
+  apply rel'
   exact h'
 }
 
@@ -895,7 +895,7 @@ theorem ne_of_beq_eq_false {n m : MyInt} : Eq (beq n m) false → Not (Eq n m) :
   rw [hn.symm, hm.symm, beq_nat] at h
   have h' := of_decide_eq_false h
   intro h2
-  have h2' := rel_int_nat h2
+  have h2' := rel h2
   contradiction
 }
 
@@ -916,7 +916,7 @@ def le_eq_nat' (a b c d : mynat) : (a — b) ≤ (c — d) → a+d ≤ c+b := by
   rcases h1 with ⟨e, h1⟩
   unfold of_mynat at h1
   rw [add_nat] at h1
-  have h2 := rel_int_nat h1
+  have h2 := rel h1
   rw [mynat.add_zero, ←mynat.add_assoc, mynat.add_comm e, mynat.add_assoc] at h2
   use e
 }
@@ -927,7 +927,7 @@ def le_eq_nat (a b c d : mynat) : a+d ≤ c+b → (a — b) ≤ (c — d) := by 
   use e
   unfold of_mynat
   rw [add_nat]
-  apply rel_nat_int
+  apply rel'
   ring
   rw [h1]
   ring
@@ -1073,10 +1073,10 @@ instance : LinearOrderedCommRing MyInt where
     use a*b
     constructor
     unfold of_mynat
-    apply rel_nat_int
+    apply rel'
     ring
     intro h3
-    have h4 := rel_int_nat h3
+    have h4 := rel h3
     rw [mynat.add_zero, mynat.add_zero] at h4
     have h5 := mynat.no_zero_divisors a b h4.symm
     rw [zero_eq] at *
@@ -1109,7 +1109,7 @@ instance : LinearOrderedCommRing MyInt where
     have h1' := add_cancel h
     unfold of_mynat at h1'
     rw [zero_add, zero_eq, add_nat] at h1'
-    have h1'' := rel_int_nat h1'
+    have h1'' := rel h1'
     rw [mynat.zero_add, mynat.zero_add, mynat.add_zero] at h1''
     rcases mynat.zero_iff_eq_zero _ _ h1''.symm with ⟨h2, h2'⟩
     unfold of_mynat at h'
@@ -1148,10 +1148,10 @@ theorem mul_pos (x y: MyInt) (h1: 0 < x) (h2: 0 < y) : 0 < x * y := by {
     use a*b
     constructor
     unfold of_mynat
-    apply rel_nat_int
+    apply rel'
     ring
     intro h3
-    have h4 := rel_int_nat h3
+    have h4 := rel h3
     rw [mynat.add_zero, mynat.add_zero] at h4
     have h5 := mynat.no_zero_divisors a b h4.symm
     rw [zero_eq] at *
@@ -1186,7 +1186,7 @@ theorem gt_pos {a b: MyInt} (h1: a > 0) (h2: b > 0) : a*b > 0 := by {
   ring
   intro h3
   rw [zero_eq] at  h3
-  have h4 := rel_int_nat h3
+  have h4 := rel h3
   rw [mynat.zero_add, mynat.add_zero] at h4
   rcases mynat.no_zero_divisors _ _ h4.symm with ⟨hc⟩ | ⟨hd⟩
   rw [hc, zero_add] at h1

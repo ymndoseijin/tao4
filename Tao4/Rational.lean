@@ -57,13 +57,13 @@ infixl:65 " // "   => mk
 infixl:65 " ~ "   => rel_rat
 
 -- very useful
-theorem rel_int_rat {a b c d: MyInt} {hb: b ≠ 0} {hd: d ≠ 0} : a*d = c*b → (a // b) hb = (c // d) hd := by {
+theorem rel' {a b c d: MyInt} {hb: b ≠ 0} {hd: d ≠ 0} : a*d = c*b → (a // b) hb = (c // d) hd := by {
   intro h
   apply Quot.sound (r := rel_rat); unfold rel_rat
   exact h
 }
 
-theorem rel_rat_int {a b c d: MyInt} {hb: b ≠ 0} {hd: d ≠ 0} : (a // b) hb = (c // d) hd → a*d = c*b := by {
+theorem rel {a b c d: MyInt} {hb: b ≠ 0} {hd: d ≠ 0} : (a // b) hb = (c // d) hd → a*d = c*b := by {
   intro h
   have h1 := Quotient.exact h
   exact h1
@@ -84,7 +84,7 @@ private def add_fn (x: myrat) (y: myrat) : MyRat :=
 private theorem add_respects_1 (a b₁ b₂ : myrat) (hb: b₁ ~ b₂) : add_fn a b₁ = add_fn a b₂ := by {
   unfold add_fn
   unfold rel_rat at hb
-  apply rel_int_rat
+  apply rel'
   ring
   rw [mul_assoc (a.d^2), hb]
   ring
@@ -93,7 +93,7 @@ private theorem add_respects_1 (a b₁ b₂ : myrat) (hb: b₁ ~ b₂) : add_fn 
 private theorem add_respects_2 (a₁ a₂ b : myrat) (ha: a₁ ~ a₂) : add_fn a₁ b = add_fn a₂ b := by {
   unfold add_fn
   unfold rel_rat at ha
-  apply rel_int_rat
+  apply rel'
   ring
   rw [mul_comm _ a₂.d, ←mul_assoc, mul_comm a₂.d, ha]
   ring
@@ -110,14 +110,14 @@ def mul_fn (x: myrat) (y: myrat) : MyRat :=
   ((x.n*y.n) // (x.d*y.d)) (mul_neq_zero x.d_neq y.d_neq)
 
 private theorem mul_respects_1 (a b₁ b₂ : myrat) (hb: b₁ ~ b₂) : mul_fn a b₁ = mul_fn a b₂ := by {
-  unfold mul_fn; unfold rel_rat at hb; apply rel_int_rat
+  unfold mul_fn; unfold rel_rat at hb; apply rel'
   ring
   rw [mul_comm a.n, mul_comm _ b₂.d, ← mul_assoc, ← mul_assoc, mul_comm b₂.d, hb]
   ring
 }
 
 private theorem mul_respects_2 (a₁ a₂ b : myrat) (ha: a₁ ~ a₂) : mul_fn a₁ b = mul_fn a₂ b := by {
-  unfold mul_fn; unfold rel_rat at ha; apply rel_int_rat
+  unfold mul_fn; unfold rel_rat at ha; apply rel'
   ring
   rw [mul_comm _ a₂.d, ← mul_assoc, mul_comm a₂.d, ha]
   ring
@@ -154,7 +154,7 @@ def neg_fn (a: myrat) : MyRat := (-a.n // a.d) a.d_neq
 private theorem neg_respects (a a' : myrat) (ha: a ~ a') : neg_fn a = neg_fn a' := by {
   unfold neg_fn
   unfold rel_rat at ha
-  apply rel_int_rat
+  apply rel'
   rw [neg_mul, neg_mul, ha]
 }
 
@@ -165,7 +165,7 @@ instance : Neg MyRat := ⟨MyRat.neg⟩
 
 theorem zero_divided (m : MyInt) (m_neq : m ≠ 0): (0 // m) m_neq = 0 := by {
     rw [zero_eq]
-    apply rel_int_rat
+    apply rel'
     ring
   }
 
@@ -175,7 +175,7 @@ theorem neq_num_neq_zero (x: MyRat) (ha: x ≠ 0) : ∀(n m : MyInt) (hm: m ≠ 
   rw [hn] at hm
   have h1 : (0 // m) m_neq = 0 := by {
     rw [zero_eq]
-    apply rel_int_rat
+    apply rel'
     ring
   }
   rw [h1] at hm
@@ -188,7 +188,7 @@ def of_myint (a: MyInt) : MyRat := (a // 1) MyInt.one_ne_zero
 theorem neq_num_neq_zero' {a b: MyInt} (b_neq : b ≠ 0) (a_neq : a ≠ 0) : (a // b) b_neq ≠ 0 := by {
   rw [zero_eq] at *
   intro h
-  have h2 := rel_rat_int h
+  have h2 := rel h
   simp at h2
   contradiction
 }
@@ -224,7 +224,7 @@ private theorem inv_respects (a a' : myrat) (haa': a ~ a') : inv_fn a = inv_fn a
       contradiction
     }
     · case inr h' => {
-      apply rel_int_rat
+      apply rel'
       rw [mul_comm a'.n] at haa'
       rw [haa'.symm]
       ring
@@ -257,7 +257,7 @@ theorem cancel (a : MyRat) (ha: a ≠ 0): a*a⁻¹ = 1 := by {
   have n_neq := neq_num_neq_zero a ha n m m_neq h1
   simp_rw [h1.symm]
   rw [inv_int, mul_int]
-  apply rel_int_rat
+  apply rel'
   ring
   exact n_neq
 }
@@ -268,7 +268,7 @@ macro "myrat_xyz" : tactic =>
              rcases rat_destruct y with ⟨c, d, d_neq, hy⟩
              rcases rat_destruct z with ⟨e, f, f_neq, hz⟩
              rw [hx.symm, hy.symm, hz.symm]
-             apply rel_int_rat
+             apply rel'
              ring))
 
 macro "myrat_xy" : tactic =>
@@ -276,14 +276,14 @@ macro "myrat_xy" : tactic =>
              rcases rat_destruct x with ⟨a, b, b_neq, hx⟩
              rcases rat_destruct y with ⟨c, d, d_neq, hy⟩
              rw [hx.symm, hy.symm]
-             apply rel_int_rat
+             apply rel'
              ring))
 
 macro "myrat_x" : tactic =>
   `(tactic| (intro x
              rcases rat_destruct x with ⟨a, b, b_neq, hx⟩
              rw [hx.symm]
-             apply rel_int_rat
+             apply rel'
              ring))
 
 theorem add_comm : ∀ (x y : MyRat), x+y = y+x := by myrat_xy
@@ -339,7 +339,7 @@ theorem is_pos (n m: MyInt) (m_neq: m ≠ 0) (ha: n > 0) (hb: m > 0) : Positive 
 }
 
 theorem cancel_int (n m: MyInt) (m_neg_neq: -m ≠ 0) (m_neq: m ≠ 0) : (-n // -m) m_neg_neq = (n // m) m_neq := by {
-  apply rel_int_rat
+  apply rel'
   ring
 }
 
@@ -348,7 +348,7 @@ theorem trichotomy (a : MyRat) : (Positive a) ∨ (a = 0) ∨ (Negative a)  := b
   have m_neg_neq : (-1: MyInt) ≠ 0 := by {
     intro h
     rw [MyInt.one_eq, MyInt.zero_eq] at h
-    have a := MyInt.rel_int_nat h
+    have a := MyInt.rel h
     simp only at a
   }
   have m_neg_neq : -m ≠ 0 := by {
@@ -380,7 +380,7 @@ theorem trichotomy (a : MyRat) : (Positive a) ∨ (a = 0) ∨ (Negative a)  := b
 
   constructor
   assumption
-  apply rel_int_rat
+  apply rel'
   simp only
   ring
 
@@ -398,7 +398,7 @@ theorem trichotomy (a : MyRat) : (Positive a) ∨ (a = 0) ∨ (Negative a)  := b
   use ((-n) // m) m_neq
   constructor
   assumption
-  apply rel_int_rat
+  apply rel'
   simp only
   ring
 
@@ -633,7 +633,7 @@ theorem eq_of_beq_eq_true {n m : MyRat} : Eq (beq n m) true → Eq n m := by {
   rw [hn.symm, hm.symm]
   rw [hn.symm, hm.symm, beq_nat] at h
   have h' := of_decide_eq_true h
-  apply rel_int_rat
+  apply rel'
   exact h'
 }
 
@@ -645,7 +645,7 @@ theorem ne_of_beq_eq_false {n m : MyRat} : Eq (beq n m) false → Not (Eq n m) :
   rw [hn.symm, hm.symm, beq_nat] at h
   have h' := of_decide_eq_false h
   intro h2
-  have h2' := rel_rat_int h2
+  have h2' := rel h2
   contradiction
 }
 
