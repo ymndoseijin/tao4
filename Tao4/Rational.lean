@@ -104,6 +104,8 @@ def add (a : MyRat) (b : MyRat) : MyRat :=
 
 instance : Add MyRat := ⟨MyRat.add⟩ -- interface
 
+theorem add_int {a b c d: MyInt} {b_neq : b ≠ 0} {d_neq : d ≠ 0} : (a // b) b_neq + (c // d) d_neq = ((a*d+b*c) // (b*d)) (mul_neq_zero b_neq d_neq) := by rfl
+
 def mul_fn (x: myrat) (y: myrat) : MyRat :=
   ((x.n*y.n) // (x.d*y.d)) (mul_neq_zero x.d_neq y.d_neq)
 
@@ -323,11 +325,11 @@ def div (a : MyRat) (b : MyRat): MyRat :=
 
 instance : Div MyRat := ⟨MyRat.div⟩
 
-def pos_rat (a : MyRat) := ∃ (x y : MyInt) (y_pos: y ≠ 0), x ≥ 0 ∧ y > 0 ∧ a = (x // y) (y_pos)
-def neg_rat (a : MyRat) := ∃ (b : MyRat), pos_rat b ∧ a = -b
+def Positive (a : MyRat) := ∃ (x y : MyInt) (y_pos: y ≠ 0), x ≥ 0 ∧ y > 0 ∧ a = (x // y) (y_pos)
+def Negative (a : MyRat) := ∃ (b : MyRat), Positive b ∧ a = -b
 
-theorem is_pos (n m: MyInt) (m_neq: m ≠ 0) (ha: n > 0) (hb: m > 0) : pos_rat ((n // m) m_neq) := by {
-  unfold pos_rat;
+theorem is_pos (n m: MyInt) (m_neq: m ≠ 0) (ha: n > 0) (hb: m > 0) : Positive ((n // m) m_neq) := by {
+  unfold Positive;
   use n, m, m_neq
   constructor
   exact MyInt.lt_to_le ha
@@ -341,7 +343,7 @@ theorem cancel_int (n m: MyInt) (m_neg_neq: -m ≠ 0) (m_neq: m ≠ 0) : (-n // 
   ring
 }
 
-theorem trichotomy (a : MyRat) : (pos_rat a) ∨ (a = 0) ∨ (neg_rat a)  := by {
+theorem trichotomy (a : MyRat) : (Positive a) ∨ (a = 0) ∨ (Negative a)  := by {
   rcases rat_destruct a with ⟨n, m, m_neq, h1⟩
   have m_neg_neq : (-1: MyInt) ≠ 0 := by {
     intro h
@@ -369,7 +371,7 @@ theorem trichotomy (a : MyRat) : (pos_rat a) ∨ (a = 0) ∨ (neg_rat a)  := by 
   contradiction
 
   apply Or.inr; apply Or.inr
-  unfold neg_rat;
+  unfold Negative;
 
   have hm' := MyInt.le_neg 0 m hm
   rw [MyInt.neg_zero_eq_zero] at hm'
@@ -389,7 +391,7 @@ theorem trichotomy (a : MyRat) : (pos_rat a) ∨ (a = 0) ∨ (neg_rat a)  := by 
   rcases tri_m with ⟨hm⟩ | ⟨⟨hm⟩ | ⟨hm⟩⟩
 
   apply Or.inr; apply Or.inr
-  unfold neg_rat;
+  unfold Negative;
   have hn' := MyInt.le_neg 0 n hn
   rw [MyInt.neg_zero_eq_zero] at hn'
   have hb := is_pos (-n) m m_neq hn' hm
@@ -412,8 +414,157 @@ theorem trichotomy (a : MyRat) : (pos_rat a) ∨ (a = 0) ∨ (neg_rat a)  := by 
   assumption
 }
 
-def lt (x y : MyRat) : Prop := neg_rat (x - y)
+def lt (x y : MyRat) : Prop := Negative (x - y)
 def le (x y : MyRat) : Prop := lt x y ∨ x = y
 
 instance : LE MyRat where le := le
 instance : LT MyRat where lt := lt
+
+theorem lt_is_neg (a b : MyRat) (h: a < b) : Negative (a - b) := by exact h
+theorem lt_is_neg' (a b : MyRat) (h: Negative (a - b)) : a < b := by exact h
+
+theorem ge (a b : MyRat) (h: a > b) : b < a := by exact h
+theorem ge' (a b : MyRat) (h: b < a) : a > b := by exact h
+
+theorem pos_neg (a : MyRat) (h: Positive (-a)) : Negative a := by {
+  use -a
+  constructor
+  exact h
+  ring
+}
+
+theorem neg_pos (a : MyRat) (h: Negative (-a)) : Positive a := by {
+  rcases h with ⟨a', pos_a, ha'⟩
+  simp at ha'
+  rw [ha']
+  assumption
+}
+theorem order_trichotomy (a b : MyRat) : a = b ∨ a < b ∨ a > b := by {
+  have tri := trichotomy (a - b)
+  have h_neg : a - b = -(b -a)
+  · ring
+  rcases tri with ⟨h1⟩ | ⟨⟨h1⟩ | ⟨h1⟩⟩
+  -- a-b > 0
+  apply Or.inr; apply Or.inr
+  apply ge'
+  apply lt_is_neg'
+  rw [h_neg] at h1
+  exact pos_neg _ h1
+  -- a-b = 0
+  apply Or.inl
+  apply add_right_cancel (b := -b)
+  ring
+  exact h1
+  -- a-b < 0
+  apply Or.inr; apply Or.inl
+  exact h1
+}
+
+-- Proposition 4.2.9 (b)
+theorem ge_pos (x y : MyRat) (h: x < y) : Positive (y-x) := by {
+  rcases h with ⟨a', pos_a, ha'⟩
+  apply neg_pos
+  ring
+  rw [sub_eq_add_neg, add_comm] at ha'
+  rw [ha']
+  apply pos_neg
+  ring
+  assumption
+}
+
+theorem pos_eq (x : MyRat)  (h: Positive x) : x > 0 := by {
+  use x
+  constructor
+  exact h
+  ring
+}
+
+theorem pos_eq' (x : MyRat)  (h: x > 0) : Positive x := by {
+  rcases h with ⟨a', pos_a, ha'⟩
+  simp at ha'
+  rw [ha'.symm] at pos_a
+  exact pos_a
+}
+
+-- def Positive (a : MyRat) := ∃ (x y : MyInt) (y_pos: y ≠ 0), x ≥ 0 ∧ y > 0 ∧ a = (x // y) (y_pos)
+theorem le_trans (x y z : MyRat) (h1: x < y) (h2: y < z) : x < z := by {
+  rcases h1 with ⟨a', pos_a, ha'⟩
+  rcases h2 with ⟨b', pos_b, hb'⟩
+  use (a'+b')
+  constructor
+
+  rcases pos_a with ⟨c, d, d_neq, c_ge, d_gt, ha⟩
+  rcases pos_b with ⟨e, f, f_neq, e_ge, f_gt, hb⟩
+
+  use c*f + e*d, d*f, (mul_neq_zero d_neq f_neq)
+  have f_ge : f ≥ 0 := by {
+    linarith
+  }
+  have d_ge : d ≥ 0 := by {
+    linarith
+  }
+
+  constructor
+
+  have ccc : c*f ≥ 0 := by {
+    exact MyInt.ge_pos c_ge f_ge
+  }
+
+  have ccc : e*d ≥ 0 := by {
+    exact MyInt.ge_pos e_ge d_ge
+  }
+
+  linarith
+  constructor
+  exact MyInt.mul_pos _ _ d_gt f_gt
+  rw [ha, hb, add_int]
+  ring
+  ring
+  rw [sub_eq_add_neg, sub_eq_add_neg, ha'.symm, hb'.symm]
+  ring
+}
+
+theorem add_right_le (x y z: MyRat) (h1: x < y) : x+z < y+z := by {
+  rcases h1 with ⟨a', pos_a, ha'⟩
+  use a', pos_a
+  rw [ha'.symm]
+  ring
+}
+
+theorem le_neg (a b : MyRat) (h1: a > b) : -a < -b := by {
+  rcases h1 with ⟨a', pos_a, ha'⟩
+  use a', pos_a
+  rw [ha'.symm]
+  ring
+}
+
+theorem zero_mul_le (a b : MyRat) (h1: a > 0) (h2: b > 0) : a*b > 0 := by {
+  have h3 := pos_eq' _ h1
+  have h4 := pos_eq' _ h2
+  rcases h3 with ⟨c, d, d_pos, c_ge, d_gt, ha⟩
+  rcases h4 with ⟨n, m, m_neq, n_ge, m_gt, hb⟩
+  apply pos_eq
+  unfold Positive
+  use c*n, d*m, mul_neq_zero d_pos m_neq
+  use MyInt.ge_pos c_ge n_ge, MyInt.gt_pos d_gt m_gt
+  rw [ha, hb, mul_int]
+}
+
+theorem mul_right_le (x y z: MyRat) (h1: x < y) (h2: z > 0): x*z < y*z := by {
+  rcases h1 with ⟨a', pos_a, ha1⟩
+  use y*z-x*z, by {
+    apply pos_eq'
+    have ha2 := le_neg _ _ (pos_eq a' pos_a)
+    rw [ha1.symm] at ha2
+    have h3 := le_neg _ _ ha2
+    simp at h3
+    rcases h3 with ⟨b', _, hb'⟩
+    simp at hb'
+    have ha3 := le_neg _ _ ha2
+    simp at ha3
+    have ha4 := zero_mul_le _ _ ha3 h2
+    rw [← mul_sub_right_distrib]
+    exact ha4
+  }
+  ring
+}
