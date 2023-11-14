@@ -902,6 +902,146 @@ def decEq (n m : MyInt) : Decidable (Eq n m) :=
 @[inline] instance : DecidableEq MyInt := MyInt.decEq
 
 /-
+def le (a b : MyInt) : Prop :=  ∃ (c : mynat), b = a + of_mynat c
+def lt (a b : MyInt) : Prop :=  ∃ (c : mynat), b = a + of_mynat c ∧ a ≠ b
+-/
+
+def le_eq_nat' (a b c d : mynat) : (a — b) ≤ (c — d) → a+d ≤ c+b := by {
+  intro h1
+  rcases h1 with ⟨e, h1⟩
+  unfold of_mynat at h1
+  rw [add_nat] at h1
+  have h2 := rel_int_nat h1
+  rw [mynat.add_zero, ←mynat.add_assoc, mynat.add_comm e, mynat.add_assoc] at h2
+  use e
+}
+
+def le_eq_nat (a b c d : mynat) : a+d ≤ c+b → (a — b) ≤ (c — d) := by {
+  intro h1
+  rcases h1 with ⟨e, h1⟩
+  use e
+  unfold of_mynat
+  rw [add_nat]
+  apply rel_nat_int
+  ring
+  rw [h1]
+  ring
+}
+
+private def le'_fn (a: myint) (b: myint) : Bool :=
+  decide ((a.l+b.r) ≤ (a.r+b.l))
+
+private theorem le'_respects_1 (a b₁ b₂ : myint) (hb: b₁ ~ b₂) : le'_fn a b₁ = le'_fn a b₂ := by {
+  unfold le'_fn
+  unfold rel_int at hb
+  match hd:decide (a.l + b₁.r ≤ a.r + b₁.l)  with
+  | true => {
+    have h1 := of_decide_eq_true hd
+    apply Eq.symm
+    apply decide_eq_true
+    rcases h1 with ⟨e, h1⟩
+    use e
+    have h2 := mynat.add_cancel_right' (a := b₂.l) h1
+    rw [←mynat.add_assoc, ←mynat.add_assoc, ←mynat.add_assoc, mynat.add_comm b₁.r, ←mynat.add_assoc, hb.symm, mynat.add_assoc a.l, mynat.add_comm b₁.l, mynat.add_comm b₁.l, mynat.add_assoc, mynat.add_assoc] at h2
+    have h3 := mynat.add_cancel_right h2
+    rw [h3]
+    ring
+  }
+  | false => {
+    have h1 := of_decide_eq_false hd
+    apply Eq.symm
+    apply decide_eq_false
+
+    intro h2
+    rcases h2 with ⟨e, h2⟩
+    have h3 := mynat.add_cancel_right' (a := b₁.r) h2
+    rw [←mynat.add_assoc, hb.symm, mynat.add_assoc, mynat.add_comm a.l, mynat.add_comm _ b₂.r, ←mynat.add_assoc, ←mynat.add_assoc] at h3
+
+    have h4 := mynat.add_cancel h3
+    rw [mynat.add_comm e, mynat.add_assoc] at h4
+    have h5 := mynat.le' h4
+    contradiction
+  }
+}
+
+private theorem le'_respects_2 (a₁ a₂ b : myint) (ha: a₁ ~ a₂) : le'_fn a₁ b = le'_fn a₂ b := by {
+  unfold le'_fn
+  unfold rel_int at ha
+  match hd:decide (a₁.l + b.r ≤ a₁.r + b.l)  with
+  | true => {
+    have h1 := of_decide_eq_true hd
+    apply Eq.symm
+    apply decide_eq_true
+
+    rcases h1 with ⟨e, h1⟩
+    use e
+    have h2 := mynat.add_cancel_right' (a := a₂.l) h1
+    rw [←mynat.add_assoc, ←mynat.add_assoc, ←mynat.add_assoc, mynat.add_comm a₁.r, ←mynat.add_assoc, ha.symm, mynat.add_assoc b.l, mynat.add_comm _ a₁.l,  ← mynat.add_assoc] at h2
+    have h3 := mynat.add_cancel h2
+    rw [mynat.add_comm] at h3
+    rw [h3]
+    ring
+  }
+  | false => {
+    have h1 := of_decide_eq_false hd
+    apply Eq.symm
+    apply decide_eq_false
+
+    intro h2
+    rcases h2 with ⟨e, h2⟩
+    have h3 := mynat.add_cancel_right' (a := a₁.r) h2
+    rw [mynat.add_comm _ a₁.r, mynat.add_comm _ a₁.r, mynat.add_assoc, mynat.add_assoc, mynat.add_assoc, mynat.add_comm a₁.r a₂.l, ha.symm, mynat.add_comm a₁.r, mynat.add_comm a₁.l, ← mynat.add_assoc, ← mynat.add_assoc, ← mynat.add_assoc] at h3
+
+    have h4 := mynat.add_cancel h3
+    rw [mynat.add_assoc] at h4
+    have h5 := mynat.le' h4
+    contradiction
+  }
+}
+
+def le' (a : MyInt) (b : MyInt) : Bool :=
+  Quot.liftOn₂ a b le'_fn (le'_respects_1) (le'_respects_2)
+
+-- decide ((a.l+b.r) ≤ (a.r+b.l))
+theorem le'_nat {a b c d: mynat} : le' (a—b) (c—d) = decide ((a+d) ≤ (b+c)) := by rfl
+
+theorem leq_of_ble_eq_true : {n m : MyInt} → Eq (le' n m) true → n ≤ m := by {
+  intro n m h1
+  rcases int_to_pair n with ⟨a, b, hn⟩
+  rcases int_to_pair m with ⟨c, d, hm⟩
+  rw [hn.symm, hm.symm, le'_nat] at h1
+  rw [hn.symm, hm.symm]
+  have h2 := of_decide_eq_true h1
+  apply le_eq_nat
+  rw [mynat.add_comm c]
+  exact h2
+}
+
+theorem nleq_of_ble_eq_true : {n m : MyInt} → Eq (le' n m) false → Not (n ≤ m) := by {
+  intro n m h1
+  rcases int_to_pair n with ⟨a, b, hn⟩
+  rcases int_to_pair m with ⟨c, d, hm⟩
+  rw [hn.symm, hm.symm, le'_nat] at h1
+  rw [hn.symm, hm.symm]
+  have h2 := of_decide_eq_false h1
+  intro h3
+  have h4 := le_eq_nat' _ _ _ _ h3
+  rw [mynat.add_comm c] at h4
+  contradiction
+}
+
+def dec_le (n m : MyInt) : Decidable (n ≤ m) :=
+  match h:le' n m with
+  | true  => isTrue (leq_of_ble_eq_true h)
+  | false => isFalse (nleq_of_ble_eq_true h)
+
+instance decidableLE : @DecidableRel MyInt (· ≤ ·) := by {
+  intro a b
+  simp only
+  exact dec_le a b
+}
+
+/-
   I had to manually sift through the code, the error is with lt_iff_le_not_le
 -/
 instance : LinearOrderedCommRing MyInt where
@@ -948,11 +1088,7 @@ instance : LinearOrderedCommRing MyInt where
     | inl h1 => apply Or.inl; use 0; unfold of_mynat; rw [← zero_eq, add_zero]; exact h1.symm
     | inr h1 => apply Or.inr; rcases h1 with ⟨a, h1, h1'⟩; use a
   }
-  decidableLE := by {
-    intro a b
-    simp
-    sorry
-  }
+  decidableLE := by infer_instance
   mul_comm := mul_comm
   lt_iff_le_not_le := by {
     intro a b

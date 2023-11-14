@@ -781,15 +781,6 @@ theorem leq_of_ble_eq_true : {n m : mynat} → Eq (ble n m) true → n ≤ m
       exact h2
     }
 
-/-
-theorem ne_of_beq_eq_false : {n m : mynat} → Eq (beq n m) false → Not (Eq n m)
-  | zero,   zero,   h₁, _  => Bool.noConfusion h₁
-  | zero,   succ _, _,  h₂ => mynat.noConfusion h₂
-  | succ _, zero,   _,  h₂ => mynat.noConfusion h₂
-  | succ n, succ m, h₁, h₂ =>
-    have : Eq (beq n m) false := h₁
-    mynat.noConfusion h₂ (fun h₂ => absurd h₂ (ne_of_beq_eq_false this))
--/
 theorem nleq_of_ble_eq_true : {n m : mynat} → Eq (ble n m) false → Not (n ≤ m)
   | zero,   zero,   _ => by contradiction
   | zero,   succ n, _ => by contradiction
@@ -816,6 +807,11 @@ def dec_le (n m : mynat) : Decidable (n ≤ m) :=
 instance decidableLE : @DecidableRel mynat (· ≤ ·) := by {
   intro a b
   exact dec_le a b
+}
+
+theorem le' {a b : mynat} : b = a + c → a ≤ b := by {
+  intro h
+  use c
 }
 
 end mynat
