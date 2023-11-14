@@ -749,4 +749,73 @@ def decEq (n m : mynat) : Decidable (Eq n m) :=
 
 @[inline] instance : DecidableEq mynat := mynat.decEq
 
+-- the same as beq but with a different truth table...
+def ble : mynat → mynat → Bool
+  | zero,   zero   => true
+  | zero,   succ _ => true
+  | succ _, zero   => false
+  | succ n, succ m => ble n m
+
+private theorem clutch_succ {n m : mynat} (h1 : n ≤ m) : succ n ≤ succ m := by {
+  rcases h1 with ⟨a, ha⟩
+  rw [succ_eq_add, succ_eq_add]
+  use a
+  rw [← add_assoc, add_comm 1, add_assoc, ha]
+}
+
+private theorem clutch_succ' {n m : mynat} (h1 : succ n ≤ succ m) : n ≤ m := by {
+  rcases h1 with ⟨a, ha⟩
+  rw [succ_eq_add, succ_eq_add, ← add_assoc, add_comm 1, add_assoc] at ha
+  use a
+  exact add_cancel_right ha
+}
+
+theorem leq_of_ble_eq_true : {n m : mynat} → Eq (ble n m) true → n ≤ m
+  | zero,   zero,   _ => by use zero; ring
+  | zero,   succ n, _ => by use (succ n); rw [zero_eq_zero, zero_add]
+  | succ _, zero,   _ => by contradiction
+  | succ n, succ m, h =>
+    by {
+      have h1 : Eq (ble n m) true := h
+      have h2 := clutch_succ (leq_of_ble_eq_true h1)
+      exact h2
+    }
+
+/-
+theorem ne_of_beq_eq_false : {n m : mynat} → Eq (beq n m) false → Not (Eq n m)
+  | zero,   zero,   h₁, _  => Bool.noConfusion h₁
+  | zero,   succ _, _,  h₂ => mynat.noConfusion h₂
+  | succ _, zero,   _,  h₂ => mynat.noConfusion h₂
+  | succ n, succ m, h₁, h₂ =>
+    have : Eq (beq n m) false := h₁
+    mynat.noConfusion h₂ (fun h₂ => absurd h₂ (ne_of_beq_eq_false this))
+-/
+theorem nleq_of_ble_eq_true : {n m : mynat} → Eq (ble n m) false → Not (n ≤ m)
+  | zero,   zero,   _ => by contradiction
+  | zero,   succ n, _ => by contradiction
+  | succ _, zero,   _ => by {
+    intro h
+    rcases h with ⟨a, ha⟩
+    rw [succ_add] at ha
+    exact (succ_ne_zero _) ha.symm
+  }
+  | succ n, succ m, h =>
+    by {
+      have h1 : Eq (ble n m) false := h
+      have h2 := nleq_of_ble_eq_true h1
+      intro h3
+      have h4 := clutch_succ' h3
+      contradiction
+    }
+
+def dec_le (n m : mynat) : Decidable (n ≤ m) :=
+  match h:ble n m with
+  | true  => isTrue (leq_of_ble_eq_true h)
+  | false => isFalse (nleq_of_ble_eq_true h)
+
+instance decidableLE : @DecidableRel mynat (· ≤ ·) := by {
+  intro a b
+  exact dec_le a b
+}
+
 end mynat
